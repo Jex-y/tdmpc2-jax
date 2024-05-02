@@ -6,7 +6,7 @@ import optax
 
 from tdmpc2_jax.world_model import WorldModel
 import jax.numpy as jnp
-from tdmpc2_jax.common.loss import binary_crossentropy, mse_loss, soft_crossentropy
+from tdmpc2_jax.common.loss import soft_crossentropy
 import numpy as np
 from typing import Any, Dict, Tuple
 from tdmpc2_jax.common.scale import percentile_normalization

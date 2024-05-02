@@ -73,22 +73,3 @@ class EpisodicReplayBuffer():
 
     return jax.tree_map(lambda x: np.swapaxes(x[sequence_inds], 0, 1),
                         self.data)
-
-
-if __name__ == '__main__':
-  env = gym.make('Walker2d-v4')
-  dummy_input = {'obs': env.observation_space.sample()}
-  rb = EpisodicReplayBuffer(100, dummy_input)
-
-  obs, _ = env.reset()
-  ep_count = 0
-  while ep_count < 5:
-    action = env.action_space.sample()
-    obs, reward, term, trunc, _ = env.step(action)
-    rb.insert({'obs': obs}, ep_count)
-    if term or trunc:
-      obs, _ = env.reset()
-      rb.sample(10, 3)
-      ep_count += 1
-
-  rb.sample(3, 2)
