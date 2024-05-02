@@ -1,0 +1,54 @@
+program: train.py
+method: bayes
+metric: 
+  goal: maximize
+  name: average_reward (last 10 episodes)
+parameters:
+  seed_steps: 
+    distribution: uniform
+    min: 2000
+    max: 20000
+  encoder.encoder_dim:
+    values: [128, 256, 512]
+  encoder.num_encoder_layers:
+    values: [1, 2]
+  world_model.mlp_dim:
+    values: [128, 256, 512]
+  world_model.latent_dim:
+    values: [128, 256, 512]
+  world_model.value_dropout:
+    values: [0, 0.001, 0.005, 0.01]
+  world_model.num_value_nets:
+    values: [2, 5, 10]
+  world_model.symlog_min:
+    values: [-10, -5]
+  world_model.symlog_max:
+    values: [5, 10]
+  world_model.learning_rate:
+    distribution: log_uniform_values
+    min: 1e-4
+    max: 1e-3
+  world_model.encoder_learning_rate:
+    distribution: log_uniform_values
+    min: 5e-5
+    max: 1e-3
+  tdmpc2.horizon:
+    values: [1, 3, 5, 8]
+  tdmpc2.mppi_iterations:
+    values: [6, 12]
+  tdmpc2.population_size:
+    values: [256, 512, 1024]
+  tdmpc2.policy_prior_samples:
+    values: [16, 32, 64]
+  tdmpc2.num_elites:
+    values: [32, 64, 128]
+  tdmpc2.temperature:
+    values: [0.1, 0.5, 1]
+  tdmpc2.batch_size:
+    values: [128, 256, 512]
+
+command:
+  - ${env}
+  - python
+  - ${program}
+  - ${args_no_hyphens}
