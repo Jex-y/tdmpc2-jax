@@ -4,13 +4,13 @@ import jax
 from jaxtyping import PRNGKeyArray
 import optax
 
-from tdmpc2_jax.world_model import WorldModel
+from world_model import WorldModel
 import jax.numpy as jnp
-from tdmpc2_jax.common.loss import soft_crossentropy
+from common.loss import soft_crossentropy
 import numpy as np
 from typing import Any, Dict, Tuple
-from tdmpc2_jax.common.scale import percentile_normalization
-from tdmpc2_jax.common.util import sg
+from common.scale import percentile_normalization
+from common.util import sg
 
 
 class TDMPC2(struct.PyTreeNode):
@@ -238,6 +238,7 @@ class TDMPC2(struct.PyTreeNode):
           lambda x: x[0], observations), encoder_params)
       zs = zs.at[0].set(z)
       consistency_loss = jnp.zeros(self.batch_size)
+      
       for t in range(self.horizon):
         z = self.model.next(z, actions[t], dynamics_params)
         consistency_loss += jnp.mean(
@@ -252,6 +253,7 @@ class TDMPC2(struct.PyTreeNode):
       _, q_logits = self.model.Q(
           zs[:-1], actions, value_params, value_dropout_key1)
       _, reward_logits = self.model.reward(zs[:-1], actions, reward_params)
+      
       if self.model.predict_continues:
         continue_logits = self.model.continue_model.apply_fn(
             {'params': continue_params}, zs[1:]).squeeze(-1)
@@ -259,6 +261,7 @@ class TDMPC2(struct.PyTreeNode):
       reward_loss = jnp.zeros(self.batch_size)
       value_loss = jnp.zeros(self.batch_size)
       continue_loss = jnp.zeros(self.batch_size)
+      
       for t in range(self.horizon):
         reward_loss += soft_crossentropy(reward_logits[t], rewards[t],
                                          self.model.symlog_min,
@@ -312,11 +315,13 @@ class TDMPC2(struct.PyTreeNode):
         grads=reward_grads)
     new_value_model = self.model.value_model.apply_gradients(
         grads=value_grads)
+    
     new_target_value_model = self.model.target_value_model.replace(
         params=optax.incremental_update(
             new_value_model.params,
             self.model.target_value_model.params,
             self.tau))
+    
     if self.model.predict_continues:
       new_continue_model = self.model.continue_model.apply_gradients(
           grads=continue_grads)
@@ -331,6 +336,7 @@ class TDMPC2(struct.PyTreeNode):
       # Compute Q-values
       Qs, _ = self.model.Q(
           zs, actions, new_value_model.params, value_dropout_key2)
+      
       Q = jnp.mean(Qs, axis=0)
       # Update and apply scale
       scale = percentile_normalization(Q[0], self.scale)

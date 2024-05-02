@@ -1,8 +1,7 @@
 import jax.numpy as jnp
 import jax
-import optax
 
-from tdmpc2_jax.common.util import two_hot
+from common.util import two_hot
 
 
 def huber_loss(x: jax.Array, delta: float = 1.0) -> jax.Array:

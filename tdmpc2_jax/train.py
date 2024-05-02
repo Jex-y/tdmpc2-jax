@@ -3,15 +3,18 @@ import numpy as np
 import jax
 import flax.linen as nn
 import tqdm
-from tdmpc2_jax.networks import NormedLinear
-from tdmpc2_jax.common.activations import mish, simnorm
+from networks import NormedLinear
+from common.activations import mish, simnorm
 from functools import partial
-from tdmpc2_jax import WorldModel, TDMPC2
-from tdmpc2_jax.data import EpisodicReplayBuffer
+# from tdmpc2_jax import WorldModel, TDMPC2
+from world_model import WorldModel
+from tdmpc2 import TDMPC2
+from data import EpisodicReplayBuffer
 import os
 import hydra
-from tdmpc2_jax.wrappers.action_scale import RescaleActions
+# from wrappers.action_scale import RescaleActions
 import jax.numpy as jnp
+from wrappers.action_scale import RescaleActions
 
 os.environ['PYDEVD_DISABLE_FILE_VALIDATION'] = '1'
 

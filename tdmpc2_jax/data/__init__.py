@@ -1,1 +1,1 @@
-from tdmpc2_jax.data.episodic_buffer import EpisodicReplayBuffer
+from data.episodic_buffer import EpisodicReplayBuffer

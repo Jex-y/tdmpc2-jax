@@ -5,15 +5,15 @@ import flax.linen as nn
 from flax.training.train_state import TrainState
 from flax import struct
 import numpy as np
-from tdmpc2_jax.networks import NormedLinear
-from tdmpc2_jax.common.activations import mish, simnorm
+from networks import NormedLinear
+from common.activations import mish, simnorm
 from jaxtyping import PRNGKeyArray
 import jax
 import jax.numpy as jnp
 import optax
-from tdmpc2_jax.networks import Ensemble
+from networks import Ensemble
 import gymnasium as gym
-from tdmpc2_jax.common.util import symlog, two_hot_inv
+from common.util import symlog, two_hot_inv
 
 
 class WorldModel(struct.PyTreeNode):
@@ -85,6 +85,7 @@ class WorldModel(struct.PyTreeNode):
         NormedLinear(latent_dim, activation=partial(
             simnorm, simplex_dim=simnorm_dim), dtype=dtype)
     ])
+    
     dynamics_model = TrainState.create(
         apply_fn=dynamics_module.apply,
         params=dynamics_module.init(
