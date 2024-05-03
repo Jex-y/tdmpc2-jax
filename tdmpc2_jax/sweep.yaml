@@ -4,6 +4,8 @@ metric:
   goal: maximize
   name: average_reward (last 10 episodes)
 parameters:
+  hardcore:
+    value: true
   seed_steps: 
     distribution: uniform
     min: 2000
@@ -19,7 +21,7 @@ parameters:
   world_model.value_dropout:
     values: [0, 0.001, 0.005, 0.01]
   world_model.num_value_nets:
-    values: [2, 5, 10]
+    values: [2, 5]
   world_model.symlog_min:
     values: [-10, -5]
   world_model.symlog_max:
@@ -35,18 +37,11 @@ parameters:
   tdmpc2.horizon:
     values: [1, 3, 5, 8]
   tdmpc2.mppi_iterations:
-    values: [6, 12]
+    values: [4, 6, 8, 10]
   tdmpc2.population_size:
-    values: [256, 512, 1024]
-  tdmpc2.policy_prior_samples:
-    values: [16, 32, 64]
-  tdmpc2.num_elites:
-    values: [32, 64, 128]
+    values: [256, 512, 1024, 2048]
   tdmpc2.temperature:
     values: [0.1, 0.5, 1]
-  tdmpc2.batch_size:
-    values: [128, 256, 512]
-
 command:
   - ${env}
   - python
