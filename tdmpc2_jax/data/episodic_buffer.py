@@ -76,4 +76,7 @@ class EpisodicReplayBuffer():
     
     batch['reward'] = np.nan_to_num(batch['reward'])
     
+    for key in batch.keys():
+      assert not np.any(np.isnan(batch[key])), f'Found NaN in sample: {key}'
+    
     return batch

@@ -8,6 +8,7 @@ encoder:
   num_encoder_layers: 1
 
 world_model:
+  crossq: true
   mlp_dim: 512
   latent_dim: 512
   value_dropout: 0.01
@@ -19,8 +20,7 @@ world_model:
   learning_rate: 3e-4
   encoder_learning_rate: 1e-4
   predict_continues: False
-  dtype: bfloat16
-  tabulate: False
+  dtype: float32
 
 tdmpc2:
   # Planning
