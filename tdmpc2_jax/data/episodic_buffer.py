@@ -29,7 +29,7 @@ class EpisodicReplayBuffer():
   def __len__(self):
     return self.size
 
-  def insert(self, data: Dict, episode_index: int) -> None:
+  def insert(self, data: Dict, episode_index: int) -> None:    
     # Insert the data
     jax.tree.map(lambda x, y: x.__setitem__(self.current_ind, y),
                  self.data, data)
@@ -70,6 +70,10 @@ class EpisodicReplayBuffer():
 
     sequence_inds = buffer_starts[:, None] + np.arange(sequence_length)
     sequence_inds = sequence_inds % self.capacity
-
-    return jax.tree.map(lambda x: np.swapaxes(x[sequence_inds], 0, 1),
+    
+    batch = jax.tree.map(lambda x: np.swapaxes(x[sequence_inds], 0, 1),
                         self.data)
+    
+    batch['reward'] = np.nan_to_num(batch['reward'])
+    
+    return batch

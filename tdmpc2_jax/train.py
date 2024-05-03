@@ -231,8 +231,9 @@ def train(cfg: dict):
             
             action, prev_plan = agent.act(
                 observation, prev_plan, train=True, key=action_key)
-
+            
         next_observation, reward, terminated, truncated, _ = env.step(action)
+        
         done = terminated or truncated
         step_count += 1
         
@@ -257,6 +258,7 @@ def train(cfg: dict):
             rng, *update_keys = jax.random.split(rng, num_updates+1)
             for j in range(num_updates):
                 batch = replay_buffer.sample(agent.batch_size, agent.horizon)
+
                 agent, train_info = agent.update(
                     observations=batch['observation'],
                     actions=batch['action'],
