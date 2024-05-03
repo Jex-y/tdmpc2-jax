@@ -3,6 +3,8 @@ from __future__ import annotations
 from typing import Any, Dict, Tuple
 
 import jax
+import jax.experimental
+import jax.experimental.checkify
 import jax.numpy as jnp
 import numpy as np
 import optax
@@ -376,6 +378,8 @@ class TDMPC2(struct.PyTreeNode):
                     self.tau,
                 )
             )
+        else:
+            new_target_value_model = self.model.value_model
 
         if self.model.predict_continues:
             new_continue_model = self.model.continue_model.apply_gradients(
@@ -478,6 +482,8 @@ class TDMPC2(struct.PyTreeNode):
         # Sample two Q-values from the target ensemble
         all_inds = jnp.arange(0, self.model.num_value_nets)
         inds = jax.random.choice(ensemble_key, a=all_inds, shape=(2,), replace=False)
+        # jax.debug.print("next_z: {next_z}", next_z=next_z)
+        # jax.debug.print("next_action: {nextte_action}", next_action=next_action)
         Qs, _ = self.model.Q(
             next_z,
             next_action,
@@ -489,4 +495,33 @@ class TDMPC2(struct.PyTreeNode):
             key=dropout_key,
         )
         Q = jnp.min(Qs[inds], axis=0)
+
+        # print("reward", reward)
+        # print("terminal", terminal)
+
+        # jax.experimental.checkify.check(
+        #     not jnp.any(jnp.isnan(reward)),
+        #     "reward is nan",
+        # )
+
+        # jax.experimental.checkify.check(
+        #     not jnp.any(jnp.isnan(terminal)),
+        #     "terminal is nan",
+        # )
+
+        # Check if reward or (1-terminal) is nan, throw an error if so. This code is to debug the nan issue
+        # if jnp.isnan(jnp.sum(reward)).any():
+        #     raise ValueError("reward is nan")
+
+        # if jnp.isnan(jnp.sum(1 - terminal)).any():
+        #     raise ValueError("1 - terminal is nan")
+
+        # jax.debug.print(
+        #     "reward + (1 - terminal) * self.discount * Q: {reward} + (1 - {terminal}) * {discount} * {Q} = {result}",
+        #     reward=reward,
+        #     terminal=terminal,
+        #     discount=self.discount,
+        #     Q=Q,
+        #     result=reward + (1 - terminal) * self.discount * Q,
+        # )
         return sg(reward + (1 - terminal) * self.discount * Q)

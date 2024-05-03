@@ -5,7 +5,7 @@ import flax.linen as nn
 from flax.training.train_state import TrainState
 from flax import struct
 import numpy as np
-from networks import NormedLinear, BatchRenorm
+from networks import NormedLinear, BatchNorm
 from common.activations import mish, simnorm
 from jaxtyping import PRNGKeyArray
 import jax
@@ -14,11 +14,12 @@ import optax
 from networks import Ensemble
 import gymnasium as gym
 from common.util import symlog, two_hot_inv
-import flax
 
 
-class BatchNormTrainState(TrainState):  # type: ignore[misc]
-    batch_stats: Optional[flax.core.FrozenDict]  # type: ignore[misc]
+class Identity(nn.Module):
+    @nn.compact
+    def __call__(self, x):
+        return x
 
 
 class WorldModel(struct.PyTreeNode):
@@ -27,7 +28,7 @@ class WorldModel(struct.PyTreeNode):
     dynamics_model: TrainState
     reward_model: TrainState
     policy_model: TrainState
-    value_model: BatchNormTrainState
+    value_model: TrainState
     target_value_model: Optional[TrainState]
     continue_model: TrainState
     # Spaces
@@ -42,7 +43,7 @@ class WorldModel(struct.PyTreeNode):
     symlog_min: float
     symlog_max: float
     predict_continues: bool = struct.field(pytree_node=False)
-    crossq: bool = False
+    crossq: bool = struct.field(pytree_node=False)
 
     @classmethod
     def create(
@@ -68,7 +69,6 @@ class WorldModel(struct.PyTreeNode):
         crossq: bool = False,
         max_grad_norm: float = 10,
         # Misc
-        tabulate: bool = False,
         dtype: jnp.dtype = jnp.float32,
         *,
         key: PRNGKeyArray,
@@ -79,7 +79,11 @@ class WorldModel(struct.PyTreeNode):
             NormedLinear,
             activation=mish,
             dtype=dtype,
+            use_layer_norm=not crossq,
+            use_batch_norm=crossq,
         )
+
+        maybe_batch_norm = partial(BatchNorm, dtype=dtype) if crossq else Identity
 
         action_dim = np.prod(action_space.shape)
 
@@ -97,6 +101,7 @@ class WorldModel(struct.PyTreeNode):
         # Latent forward dynamics model
         dynamics_module = nn.Sequential(
             [
+                maybe_batch_norm(),
                 NormedLinearPartial(
                     mlp_dim,
                 ),
@@ -111,16 +116,11 @@ class WorldModel(struct.PyTreeNode):
             ]
         )
 
-        variables = dynamics_module.init(
-            dynamics_key, jnp.zeros(latent_dim + action_dim)
-        )
-
         dynamics_model = TrainState.create(
             apply_fn=dynamics_module.apply,
-            params=variables["params"],
-            batch_stats=variables["batch_stats"]
-            if "batch_stats" in variables
-            else None,
+            params=dynamics_module.init(
+                dynamics_key, jnp.zeros(latent_dim + action_dim)
+            )["params"],
             tx=optax.chain(
                 optax.clip_by_global_norm(max_grad_norm),
                 optax.adam(learning_rate),
@@ -130,6 +130,7 @@ class WorldModel(struct.PyTreeNode):
         # Transition reward model
         reward_module = nn.Sequential(
             [
+                maybe_batch_norm(),
                 NormedLinearPartial(
                     mlp_dim,
                 ),
@@ -153,6 +154,7 @@ class WorldModel(struct.PyTreeNode):
         # Policy model
         policy_module = nn.Sequential(
             [
+                maybe_batch_norm(),
                 NormedLinearPartial(
                     mlp_dim,
                 ),
@@ -175,18 +177,10 @@ class WorldModel(struct.PyTreeNode):
 
         # Return/value model (ensemble)
 
-        layers = [BatchRenorm(dtype=dtype)] if crossq else []
-
-        layers += [
-            NormedLinearPartial(
-                mlp_dim,
-                dropout_rate=value_dropout,
-                use_batch_norm=crossq,
-                use_layer_norm=not crossq,
-            ),
-            NormedLinearPartial(
-                mlp_dim, use_batch_norm=crossq, use_layer_norm=not crossq
-            ),
+        layers = [
+            maybe_batch_norm(),
+            NormedLinearPartial(mlp_dim, dropout_rate=value_dropout),
+            NormedLinearPartial(mlp_dim),
             nn.Dense(num_bins, kernel_init=nn.initializers.zeros),
         ]
 
@@ -194,48 +188,21 @@ class WorldModel(struct.PyTreeNode):
 
         value_ensemble = Ensemble(value_base, num=num_value_nets)
 
-        if not crossq:
-            value_param_key, value_dropout_key = jax.random.split(value_key)
-            value_model = BatchNormTrainState.create(
-                apply_fn=value_ensemble.apply,
-                params=value_ensemble.init(
-                    {"params": value_param_key, "dropout": value_dropout_key},
-                    jnp.zeros(latent_dim + action_dim),
-                )["params"],
-                tx=optax.chain(
-                    optax.clip_by_global_norm(max_grad_norm),
-                    optax.adam(learning_rate),
-                ),
-            )
-
-        else:
-            value_param_key, value_dropout_key, value_batchnorm_key = jax.random.split(
-                value_key, 3
-            )
-            variables = value_ensemble.init(
-                {
-                    "params": value_param_key,
-                    "dropout": value_dropout_key,
-                    "batch_stats": value_batchnorm_key,
-                },
+        value_param_key, value_dropout_key = jax.random.split(value_key)
+        value_model = TrainState.create(
+            apply_fn=value_ensemble.apply,
+            params=value_ensemble.init(
+                {"params": value_param_key, "dropout": value_dropout_key},
                 jnp.zeros(latent_dim + action_dim),
-            )
-            value_model = BatchNormTrainState.create(
-                apply_fn=value_ensemble.apply,
-                params=variables["params"],
-                batch_stats=variables["batch_stats"],
-                tx=optax.chain(
-                    optax.clip_by_global_norm(max_grad_norm),
-                    optax.adam(learning_rate),
-                ),
-            )
+            )["params"],
+            tx=optax.chain(
+                optax.clip_by_global_norm(max_grad_norm),
+                optax.adam(learning_rate),
+            ),
+        )
 
         if crossq:
-
-            def target_value_model(*args, **kwargs):
-                raise NotImplementedError(
-                    "Target value model should not be used when crossq enabled."
-                )
+            target_value_model = None
         else:
             target_value_model = TrainState.create(
                 apply_fn=value_ensemble.apply,
@@ -246,6 +213,7 @@ class WorldModel(struct.PyTreeNode):
         if predict_continues:
             continue_module = nn.Sequential(
                 [
+                    maybe_batch_norm(),
                     NormedLinearPartial(
                         mlp_dim,
                     ),
@@ -265,63 +233,6 @@ class WorldModel(struct.PyTreeNode):
             )
         else:
             continue_model = None
-
-        if tabulate:
-            print("Encoder")
-            print("-------")
-            print(
-                encoder_module.tabulate(
-                    jax.random.key(0), observation_space.sample(), compute_flops=True
-                )
-            )
-
-            print("Dynamics Model")
-            print("--------------")
-            print(
-                dynamics_module.tabulate(
-                    jax.random.key(0),
-                    jnp.ones(latent_dim + action_dim),
-                    compute_flops=True,
-                )
-            )
-
-            print("Reward Model")
-            print("------------")
-            print(
-                reward_module.tabulate(
-                    jax.random.key(0),
-                    jnp.ones(latent_dim + action_dim),
-                    compute_flops=True,
-                )
-            )
-
-            print("Policy Model")
-            print("------------")
-            print(
-                policy_module.tabulate(
-                    jax.random.key(0), jnp.ones(latent_dim), compute_flops=True
-                )
-            )
-
-            print("Value Model")
-            print("-----------")
-            value_param_key, value_dropout_key = jax.random.split(value_key)
-            print(
-                value_ensemble.tabulate(
-                    {"params": value_param_key, "dropout": value_dropout_key},
-                    jnp.ones(latent_dim + action_dim),
-                    compute_flops=True,
-                )
-            )
-
-            if predict_continues:
-                print("Continue Model")
-                print("--------------")
-                print(
-                    continue_module.tabulate(
-                        jax.random.key(0), jnp.ones(latent_dim), compute_flops=True
-                    )
-                )
 
         return cls(
             # Spaces
@@ -403,15 +314,11 @@ class WorldModel(struct.PyTreeNode):
         self, z: jax.Array, a: jax.Array, params: Dict, key: PRNGKeyArray
     ) -> Tuple[jax.Array, jax.Array]:
         z = jnp.concatenate([z, a], axis=-1)
-        # TODO: HERE
-        logits, updates = self.value_model.apply_fn(
-            {
-                "params": params, 
-                "batch_stats": self.value_model.batch_stats
-            },
+
+        logits = self.value_model.apply_fn(
+            {"params": params},
             z,
             rngs={"dropout": key},
-            mutable=["batch_stats"],
         )
 
         Q = two_hot_inv(logits, self.symlog_min, self.symlog_max, self.num_bins)
