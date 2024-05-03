@@ -156,7 +156,7 @@ class CustomMonitor(gym.Wrapper[ObsType, ActType, ObsType, ActType]):
         wandb.save(self.log_file_path)
 
 
-@hydra.main(config_name='config', config_path='.', version_base='1.1')
+@hydra.main(config_name='config', config_path='.', version_base='1.2')
 def train(cfg: dict):
   seed = 42
   max_episodes = cfg['max_episodes']
