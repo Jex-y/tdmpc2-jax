@@ -14,7 +14,7 @@ from common.util import sg
 from flax import struct
 from jaxtyping import PRNGKeyArray
 from world_model import WorldModel
-
+from functools import partial
 
 class TDMPC2(struct.PyTreeNode):
     model: WorldModel
@@ -231,6 +231,7 @@ class TDMPC2(struct.PyTreeNode):
         action = jnp.clip(action, -1, 1)
         return sg(action), (mean, std)
 
+    @partial(jax.experimental.checkify.checkify, errors=jax.experimental.checkify.float_checks)
     @jax.jit
     def update(
         self,

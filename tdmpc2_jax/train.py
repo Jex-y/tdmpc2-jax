@@ -20,7 +20,7 @@ from typing import Any, Dict, List, SupportsFloat, Tuple
 import omegaconf
 # from jax.experimental import checkify
 
-# jax.config.update("jax_debug_nans", True)
+jax.config.update("jax_debug_nans", True)
 jax.config.update("jax_compilation_cache_dir", "./__jax_cache__")
 
 os.environ["PYDEVD_DISABLE_FILE_VALIDATION"] = "1"
@@ -283,7 +283,7 @@ def train(cfg: dict):
                 rng, *update_keys = jax.random.split(rng, num_updates + 1)
                 for j in range(num_updates):
                     batch = replay_buffer.sample(agent.batch_size, agent.horizon)
-                    agent, train_info = agent.update(
+                    (agent, train_info), errors = agent.update(
                         observations=batch["observation"],
                         actions=batch["action"],
                         rewards=batch["reward"],
@@ -292,6 +292,7 @@ def train(cfg: dict):
                         truncated=batch["truncated"],
                         key=update_keys[j],
                     )
+                    errors.throw()
 
         observation, _ = env.reset()
         prev_plan = None
