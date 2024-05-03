@@ -1,1 +1,2 @@
-episode: 1, reward: -98.63363172970308
+episode: 1, reward: -117.14017530493564
+episode: 2, reward: -113.75852535456978

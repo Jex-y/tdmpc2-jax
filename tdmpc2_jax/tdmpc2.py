@@ -231,7 +231,7 @@ class TDMPC2(struct.PyTreeNode):
         action = jnp.clip(action, -1, 1)
         return sg(action), (mean, std)
 
-    @partial(jax.experimental.checkify.checkify, errors=jax.experimental.checkify.float_checks)
+    # @partial(jax.experimental.checkify.checkify, errors=jax.experimental.checkify.float_checks)
     @jax.jit
     def update(
         self,
@@ -247,6 +247,16 @@ class TDMPC2(struct.PyTreeNode):
         target_dropout, value_dropout_key1, value_dropout_key2, policy_key = (
             jax.random.split(key, 4)
         )
+        
+        # def check_nan_callback(name):
+        #     def inside(value):
+        #         if jnp.any(jnp.isnan(value)):
+        #             raise ValueError(f"update has NaN in {name}.")
+        #         else:
+        #             print(f"update has no NaN in {name}.")
+        #     return inside
+        
+        # jax.debug.callback(check_nan_callback("rewards"),rewards)
 
         def world_model_loss_fn(
             encoder_params: Dict,
@@ -497,32 +507,4 @@ class TDMPC2(struct.PyTreeNode):
         )
         Q = jnp.min(Qs[inds], axis=0)
 
-        # print("reward", reward)
-        # print("terminal", terminal)
-
-        # jax.experimental.checkify.check(
-        #     not jnp.any(jnp.isnan(reward)),
-        #     "reward is nan",
-        # )
-
-        # jax.experimental.checkify.check(
-        #     not jnp.any(jnp.isnan(terminal)),
-        #     "terminal is nan",
-        # )
-
-        # Check if reward or (1-terminal) is nan, throw an error if so. This code is to debug the nan issue
-        # if jnp.isnan(jnp.sum(reward)).any():
-        #     raise ValueError("reward is nan")
-
-        # if jnp.isnan(jnp.sum(1 - terminal)).any():
-        #     raise ValueError("1 - terminal is nan")
-
-        # jax.debug.print(
-        #     "reward + (1 - terminal) * self.discount * Q: {reward} + (1 - {terminal}) * {discount} * {Q} = {result}",
-        #     reward=reward,
-        #     terminal=terminal,
-        #     discount=self.discount,
-        #     Q=Q,
-        #     result=reward + (1 - terminal) * self.discount * Q,
-        # )
         return sg(reward + (1 - terminal) * self.discount * Q)

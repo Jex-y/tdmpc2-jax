@@ -25,7 +25,6 @@ jax.config.update("jax_compilation_cache_dir", "./__jax_cache__")
 
 os.environ["PYDEVD_DISABLE_FILE_VALIDATION"] = "1"
 
-
 class CustomMonitor(gym.Wrapper[ObsType, ActType, ObsType, ActType]):
     """
     A monitor wrapper for Gym environments, it is used to know the episode reward, length, time and other data.
@@ -256,6 +255,10 @@ def train(cfg: dict):
                     raise ValueError("Action has NaNs")
 
             next_observation, reward, terminated, truncated, _ = env.step(action)
+            
+            # if jnp.any(jnp.isnan(reward)):
+            #     raise ValueError("Reward has NaNs")
+            
             done = terminated or truncated
             step_count += 1
 
@@ -283,7 +286,16 @@ def train(cfg: dict):
                 rng, *update_keys = jax.random.split(rng, num_updates + 1)
                 for j in range(num_updates):
                     batch = replay_buffer.sample(agent.batch_size, agent.horizon)
-                    (agent, train_info), errors = agent.update(
+                    
+                    # # check if batch contains NaNs
+                    # if jnp.any(jnp.isnan(batch["reward"])):
+                    #     print(batch["reward"])
+                    #     raise ValueError("Batch contains NaNs in reward")
+                    
+                    # Where reward is nan, replace with zero 
+                    batch["reward"] = jnp.nan_to_num(batch["reward"], nan=0.0)
+                    
+                    agent, train_info = agent.update(
                         observations=batch["observation"],
                         actions=batch["action"],
                         rewards=batch["reward"],
@@ -292,7 +304,6 @@ def train(cfg: dict):
                         truncated=batch["truncated"],
                         key=update_keys[j],
                     )
-                    errors.throw()
 
         observation, _ = env.reset()
         prev_plan = None

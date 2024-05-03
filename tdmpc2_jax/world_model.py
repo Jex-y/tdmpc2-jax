@@ -15,7 +15,6 @@ from networks import Ensemble
 import gymnasium as gym
 from common.util import symlog, two_hot_inv
 
-
 class Identity(nn.Module):
     @nn.compact
     def __call__(self, x):

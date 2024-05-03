@@ -36,26 +36,50 @@ class BatchNorm(nn.Module):
 
     @nn.compact
     def __call__(self, x):
+        return x
         feature_axes = _canonicalize_axes(x.ndim, self.axis)
         reduction_axes = tuple(i for i in range(x.ndim) if i not in feature_axes)
-        
+
+        def check_nan_callback(name):
+            def inside(value):
+                if jnp.any(jnp.isnan(value)):
+                    raise ValueError(f"BatchNorm has NaN in {name}.")
+            return inside
+
         # Cast to float 32:
         x = jnp.asarray(x, dtype=jnp.float32)
-        
+
+        # jax.debug.callback(check_nan_callback("input"), x)
+
         # Caculate means and variances for each feature
         mu = jnp.mean(x, axis=reduction_axes, keepdims=True)
         sig_square = jnp.var(x, axis=reduction_axes, keepdims=True)
-        
+
+        # jax.debug.callback(check_nan_callback("mu"), mu)
+        # jax.debug.callback(check_nan_callback("sig_square"), sig_square)
+
         # Use trainable parameters for scale and bias
-        scale = self.param('scale', self.scale_init, (1, x.shape[-1]), self.param_dtype)
-        bias = self.param('bias', self.bias_init, (1, x.shape[-1]), self.param_dtype)
-        
+        # scale = self.param('scale', self.scale_init, (1, x.shape[-1]), self.param_dtype)
+        # bias = self.param('bias', self.bias_init, (1, x.shape[-1]), self.param_dtype)
+
+        # jax.debug.callback(check_nan_callback("scale"), scale)
+        # jax.debug.callback(check_nan_callback("bias"), bias)
+
         # Apply batch norm
         y = x - mu
-        y *= lax.rsqrt(sig_square + self.epsilon) * scale
-        y += bias
-        
-        dtype = dtypes.canonicalize_dtype(x, scale, bias, dtype=self.dtype)
+        # jax.debug.callback(check_nan_callback("x - mu"), y)
+        y *= lax.rsqrt(sig_square + self.epsilon) # * scale
+        # jax.debug.callback(check_nan_callback("y *= rsqrt(sig_square + epsilon) * scale"), y)
+        # y += bias
+        # jax.debug.callback(check_nan_callback("y += bias"), y)
+
+        dtype = dtypes.canonicalize_dtype(x, dtype=self.dtype)
+
+        def batchnorm_output_callback(value):
+            print(f"BatchNorm output: {value}")
+
+
+        # jax.debug.callback(batchnorm_output_callback, y)
         return jnp.asarray(y, dtype=dtype)
 
     # @nn.compact
@@ -120,7 +144,7 @@ class NormedLinear(nn.Module):
 
     kernel_init: Callable = partial(nn.initializers.truncated_normal, stddev=0.02)
 
-    dtype: jnp.dtype = jnp.float32  # Switch this to bfloat16 for speed
+    dtype: jnp.dtype = jnp.float32
     param_dtype: jnp.dtype = jnp.float32
 
     @nn.compact
