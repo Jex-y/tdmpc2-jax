@@ -169,7 +169,7 @@ def train(cfg: dict):
   wandb.config = omegaconf.OmegaConf.to_container(cfg)
   wandb.init(project='tdmpc2-jax', entity='ejex', config=dict(cfg))
 
-  env = gym.make("BipedalWalker-v3", render_mode='rgb_array')
+  env = gym.make("BipedalWalker-v3", render_mode='rgb_array', hardcore=cfg['hardcore'])
   
   env = RescaleActions(env)
   env = CustomMonitor(env, log_dir="logs", record_freq=0, no_improvement_window=100)  

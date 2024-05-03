@@ -4,6 +4,10 @@ metric:
   goal: maximize
   name: average_reward (last 10 episodes)
 parameters:
+  hardcore:
+    value: true
+  max_episodes:
+    value: 1000
   seed_steps: 
     distribution: uniform
     min: 2000
@@ -11,7 +15,9 @@ parameters:
   encoder.encoder_dim:
     values: [128, 256, 512]
   encoder.num_encoder_layers:
-    values: [1, 2]
+    values: [1, 2, 3]
+  world_model.crossq:
+    values: [true, false]
   world_model.mlp_dim:
     values: [128, 256, 512]
   world_model.latent_dim:
@@ -32,6 +38,8 @@ parameters:
     distribution: log_uniform_values
     min: 5e-5
     max: 1e-3
+  world_model.predict_continues:
+    values: [true, false]
   tdmpc2.horizon:
     values: [1, 3, 5, 8]
   tdmpc2.mppi_iterations:

@@ -4,10 +4,11 @@ buffer_size: 1000000
 hardcore: true
 
 encoder:
-  encoder_dim: 256
-  num_encoder_layers: 2
+  encoder_dim: 128
+  num_encoder_layers: 1
 
 world_model:
+  crossq: true
   mlp_dim: 512
   latent_dim: 512
   value_dropout: 0.01
