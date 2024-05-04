@@ -165,6 +165,7 @@ def train(cfg: dict):
   tdmpc_config = cfg['tdmpc2']
   seed_steps = cfg['seed_steps']
   buffer_size = cfg['buffer_size']
+  no_improvement_window = cfg['no_improvement_window']
   
   wandb.config = omegaconf.OmegaConf.to_container(cfg)
   wandb.init(project='tdmpc2-jax', entity='ejex', config=dict(cfg))
@@ -172,7 +173,7 @@ def train(cfg: dict):
   env = gym.make("BipedalWalker-v3", render_mode='rgb_array', hardcore=cfg['hardcore'])
   
   env = RescaleActions(env)
-  env = CustomMonitor(env, log_dir="logs", record_freq=0, no_improvement_window=100)  
+  env = CustomMonitor(env, log_dir="logs", record_freq=0, no_improvement_window=no_improvement_window)  
   
   env.action_space.seed(seed)
   env.observation_space.seed(seed)

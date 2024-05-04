@@ -2,14 +2,18 @@ program: train.py
 method: bayes
 metric: 
   goal: maximize
-  name: average_reward (last 10 episodes)
+  name: cumulative_reward
 parameters:
   hardcore:
     value: true
+  no_improvement_window:
+    value: 500
+  max_episodes:
+    value: 500
   seed_steps: 
     distribution: uniform
-    min: 2000
-    max: 20000
+    min: 1000
+    max: 100_000
   encoder.encoder_dim:
     values: [128, 256, 512]
   encoder.num_encoder_layers:
