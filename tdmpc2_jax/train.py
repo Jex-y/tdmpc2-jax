@@ -171,9 +171,9 @@ def train(cfg: dict):
   wandb.init(project='tdmpc2-jax', entity='ejex', config=dict(cfg))
 
   env = gym.make("BipedalWalker-v3", render_mode='rgb_array', hardcore=cfg['hardcore'])
-  
+
   env = RescaleActions(env)
-  env = CustomMonitor(env, log_dir="logs", record_freq=0, no_improvement_window=no_improvement_window)  
+  env = CustomMonitor(env, log_dir="logs", record_freq=10, no_improvement_window=no_improvement_window)  
   
   env.action_space.seed(seed)
   env.observation_space.seed(seed)

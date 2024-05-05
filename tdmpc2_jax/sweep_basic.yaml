@@ -7,9 +7,9 @@ parameters:
   hardcore:
     value: true
   no_improvement_window:
-    value: 500
+    value: 200
   max_episodes:
-    value: 500
+    value: 200
   seed_steps: 
     distribution: uniform
     min: 2000
@@ -17,7 +17,7 @@ parameters:
   encoder.encoder_dim:
     values: [32, 40, 48, 56, 64, 72, 80, 88, 96, 104, 112, 120, 128]
   encoder.num_encoder_layers:
-    value: 2
+    values: [1, 2]
   world_model.mlp_dim:
     values: [32, 40, 48, 56, 64, 72, 80, 88, 96, 104, 112, 120, 128, 136, 144, 152, 160]
   world_model.latent_dim:
@@ -28,11 +28,11 @@ parameters:
     value: 5
   world_model.learning_rate:
     distribution: log_uniform_values
-    min: 1e-4
-    max: 1e-3
+    min: 2e-4
+    max: 5e-3
   world_model.encoder_learning_rate:
     distribution: log_uniform_values
-    min: 5e-5
+    min: 8e-5
     max: 1e-3
   world_model.predict_continues:
     values: [true, false]
@@ -43,7 +43,9 @@ parameters:
   tdmpc2.population_size:
     value: 1024
   tdmpc2.temperature:
-    values: [0.1, 0.2, 0.5]
+    distribution: uniform
+    min: 0.05
+    max: 0.8
   tdmpc2.entropy_coef:
     distribution: log_uniform_values
     min: 1e-5

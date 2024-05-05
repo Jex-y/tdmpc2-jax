@@ -148,6 +148,7 @@ class TDMPC2(struct.PyTreeNode):
     mean = jnp.zeros((self.horizon, self.model.action_dim))
     std = self.max_plan_std * \
         jnp.ones((self.horizon, self.model.action_dim))
+        
     # Warm start MPPI with the previous solution
     if prev_plan is not None:
       prev_mean, prev_std = prev_plan
@@ -169,6 +170,7 @@ class TDMPC2(struct.PyTreeNode):
             self.population_size - self.policy_prior_samples,
             self.model.action_dim
         ))
+    
     for i in range(self.mppi_iterations):
       # Sample actions
       actions = actions.at[:, self.policy_prior_samples:].set(
