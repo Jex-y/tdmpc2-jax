@@ -11,13 +11,14 @@ parameters:
   max_episodes:
     value: 500
   seed_steps: 
-    distribution: uniform
+    distribution: q_uniform
+    q: 100
     min: 2000
     max: 20_000
   encoder.encoder_dim:
     values: [32, 40, 48, 56, 64, 72, 80, 88, 96, 104, 112, 120, 128]
   encoder.num_encoder_layers:
-    value: 2
+    values: [2, 3]
   world_model.mlp_dim:
     values: [32, 40, 48, 56, 64, 72, 80, 88, 96, 104, 112, 120, 128, 136, 144, 152, 160]
   world_model.latent_dim:
@@ -27,27 +28,33 @@ parameters:
   world_model.num_value_nets:
     value: 5
   world_model.learning_rate:
-    distribution: log_uniform_values
+    distribution: q_log_uniform_values
+    q: 1e-4
     min: 1e-4
     max: 1e-3
   world_model.encoder_learning_rate:
     distribution: log_uniform_values
+    q: 1e-4
     min: 5e-5
     max: 1e-3
   world_model.predict_continues:
     values: [true, false]
   tdmpc2.horizon:
-    values: [5, 8]
+    value: 5
   tdmpc2.mppi_iterations:
-    values: [6, 8, 10]
+    values: [6, 8]
   tdmpc2.population_size:
     value: 1024
   tdmpc2.temperature:
-    values: [0.1, 0.2, 0.5]
+    distribution: q_uniform
+    q: 0.01
+    min: 0.05
+    max: 0.8
   tdmpc2.entropy_coef:
-    distribution: log_uniform_values
+    distribution: q_log_uniform_values
+    q: 1e-5
     min: 1e-5
-    max: 1e-3
+    max: 1e-4
 command:
   - ${env}
   - python

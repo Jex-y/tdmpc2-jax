@@ -12,14 +12,20 @@ from data import EpisodicReplayBuffer
 import os
 import hydra
 import jax.numpy as jnp
-from wrappers.action_scale import RescaleActions
 import wandb
 from gymnasium.core import ActType, ObsType
 import time
 from typing import Any, Dict, List, SupportsFloat, Tuple
 import omegaconf
 
-
+jax.config.update("jax_compilation_cache_dir", "/tmp/jax-cache")
+os.environ['XLA_FLAGS'] = (
+    '--xla_gpu_enable_triton_softmax_fusion=true '
+    '--xla_gpu_triton_gemm_any=True '
+    '--xla_gpu_enable_async_collectives=true '
+    '--xla_gpu_enable_latency_hiding_scheduler=true '
+    '--xla_gpu_enable_highest_priority_async_stream=true '
+)
 os.environ['PYDEVD_DISABLE_FILE_VALIDATION'] = '1'
 
 class CustomMonitor(gym.Wrapper[ObsType, ActType, ObsType, ActType]):
@@ -111,7 +117,8 @@ class CustomMonitor(gym.Wrapper[ObsType, ActType, ObsType, ActType]):
                 self.ep_since_improvement += 1
 
                 assert (
-                    self.episodes < 2 * self.no_improvement_window
+                    self.no_improvement_window <= 0
+                    or self.episodes < 2 * self.no_improvement_window
                     or sum(self.episode_rewards[-self.no_improvement_window :])
                     > sum(
                         self.episode_rewards[
@@ -156,14 +163,15 @@ class CustomMonitor(gym.Wrapper[ObsType, ActType, ObsType, ActType]):
         wandb.save(self.log_file_path)
 
 
-@hydra.main(config_name='config', config_path='.', version_base='1.2')
+@hydra.main(config_name='basic', config_path='.', version_base='1.2')
 def train(cfg: dict):
   seed = 42
   max_episodes = cfg['max_episodes']
   encoder_config = cfg['encoder']
   model_config = cfg['world_model']
   tdmpc_config = cfg['tdmpc2']
-  seed_steps = cfg['seed_steps']
+  seed_steps = int(cfg['seed_steps'])
+  seed_update_ratio = cfg['seed_update_ratio']
   buffer_size = cfg['buffer_size']
   no_improvement_window = cfg['no_improvement_window']
   
@@ -172,7 +180,6 @@ def train(cfg: dict):
 
   env = gym.make("BipedalWalker-v3", render_mode='rgb_array', hardcore=cfg['hardcore'])
 
-  env = RescaleActions(env)
   env = CustomMonitor(env, log_dir="logs", record_freq=10, no_improvement_window=no_improvement_window)  
   
   env.action_space.seed(seed)
@@ -252,7 +259,7 @@ def train(cfg: dict):
         if step_count >= seed_steps:
             if step_count == seed_steps:
                 print('Pre-training on seed data...')
-                num_updates = seed_steps
+                num_updates = int(seed_update_ratio * seed_steps)
             else:
                 num_updates = 1
 
